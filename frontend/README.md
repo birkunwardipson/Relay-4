@@ -6,6 +6,8 @@ Dispatcher console with five pages: Overview, Incidents (the dispatch workspace)
 
 For the complete two-terminal setup, ElevenLabs tunnel, webhook configuration, and troubleshooting, use [`../RUNNING.md`](../RUNNING.md). This document focuses on the React/Vite application.
 
+The console opens with an operator login. The default operator is `Pete`; the password is validated by the backend. A successful session shows `Pete · Operator` in the header and can be ended with **Sign out**.
+
 ## Run
 
 ```bash

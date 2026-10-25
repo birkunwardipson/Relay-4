@@ -22,6 +22,21 @@ def test_health(test_context):
     assert response.json()["status"] == "ok"
 
 
+def test_operator_login_uses_configured_admin_key_fallback(test_context):
+    response = test_context.post(
+        "/api/auth/login",
+        json={"username": "Pete", "password": "test-admin-key"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"authenticated": True, "operator": "Pete"}
+
+    rejected = test_context.post(
+        "/api/auth/login",
+        json={"username": "Pete", "password": "wrong-password"},
+    )
+    assert rejected.status_code == 401
+
+
 def test_webhook_creates_incident_and_unverified_evidence(test_context, webhook_headers):
     response = test_context.post(
         "/api/elevenlabs/tools/upsert-incident",

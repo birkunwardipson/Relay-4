@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Notice } from "./components/Cards";
 import { Icon, type IconName } from "./components/Icon";
+import { LoginScreen } from "./components/LoginScreen";
 import { API_BASE_URL } from "./api";
 import { DataContext, useAppData, useDataSource } from "./data";
 import { clock } from "./format";
@@ -30,20 +31,41 @@ const TITLES: Record<Page, [string, string]> = {
 
 export default function App() {
   const mode = useMode();
+  const [operator, setOperator] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("relay4.operator");
+    } catch {
+      return null;
+    }
+  });
+
+  if (!operator) {
+    return <LoginScreen onLogin={setOperator} />;
+  }
+
+  const logout = () => {
+    try {
+      sessionStorage.removeItem("relay4.operator");
+    } catch {
+      // Session storage may be unavailable; the in-memory state still logs out.
+    }
+    setOperator(null);
+  };
+
   // Remount on mode change so no live state leaks into demo mode or the other way round.
-  return <Root key={mode} mode={mode} />;
+  return <Root key={`${mode}:${operator}`} mode={mode} operator={operator} onLogout={logout} />;
 }
 
-function Root({ mode }: { mode: ReturnType<typeof useMode> }) {
+function Root({ mode, operator, onLogout }: { mode: ReturnType<typeof useMode>; operator: string; onLogout: () => void }) {
   const data = useDataSource(mode);
   return (
     <DataContext.Provider value={data}>
-      <Layout />
+      <Layout operator={operator} onLogout={onLogout} />
     </DataContext.Provider>
   );
 }
 
-function Layout() {
+function Layout({ operator, onLogout }: { operator: string; onLogout: () => void }) {
   const route = useRoute();
   const [menuOpen, setMenuOpen] = useState(false);
   const [title, subtitle] = TITLES[route.page];
@@ -83,7 +105,7 @@ function Layout() {
       </aside>
 
       <main id="main" tabIndex={-1}>
-        <Header title={title} subtitle={subtitle} />
+        <Header title={title} subtitle={subtitle} operator={operator} onLogout={onLogout} />
         <ModeBanner />
         {route.page === "overview" && <Overview />}
         {route.page === "incidents" && <Incidents />}
@@ -95,45 +117,29 @@ function Layout() {
   );
 }
 
-function Header({ title, subtitle }: { title: string; subtitle: string }) {
-  const { mode, connection } = useAppData();
-  const host = API_BASE_URL.replace(/^https?:\/\//, "");
-  const status: Record<typeof connection, [string, string]> = {
-    online: ["ok", "Backend online"],
-    connecting: ["muted", "Connecting…"],
-    offline: ["bad", "Backend offline · retrying"],
-    demo: ["warn", "Demo data · no backend"],
-  };
-  const [tone, text] = status[connection];
-
+function Header({ title, subtitle, operator, onLogout }: { title: string; subtitle: string; operator: string; onLogout: () => void }) {
   return (
     <header className="page-head">
       <div>
         <h1 id="page-title" tabIndex={-1}>{title}</h1>
         <p className="page-sub">
-          <span className="eyebrow">{mode === "demo" ? "Demo workspace" : `Live · ${host}`}</span>
-          <span className="divider" aria-hidden="true" />
           <span>{subtitle}</span>
         </p>
       </div>
       <div className="head-right">
-        <span className={`conn ${tone}`} role="status">
-          <i aria-hidden="true" />
-          {text}
-        </span>
         <button className="icon-btn" onClick={() => {
           navigate("incidents", { focus: "search" });
         }} aria-label="Search incidents">
           <Icon name="search" />
         </button>
         <div className="user">
-          <span className="avatar" aria-hidden="true">{mode === "demo" ? "JD" : "P"}</span>
+          <span className="avatar" aria-hidden="true">{operator.slice(0, 1).toUpperCase()}</span>
           <span>
-            <strong>{mode === "demo" ? "Jordan Diaz" : "Pete"}</strong>
-            {/* shortcut: name is fixed in code, not a sign-in; replace when the backend has dispatcher identity */}
-            <span className="muted small">{mode === "demo" ? "Dispatcher (demo)" : "Operator · no sign-in"}</span>
+            <strong>{operator}</strong>
+            <span className="muted small">Operator</span>
           </span>
         </div>
+        <button className="btn small" onClick={onLogout}>Sign out</button>
       </div>
     </header>
   );
