@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+.aws/
+.agents
+.claude
+.codex
 
 # Node / React
 node_modules/
