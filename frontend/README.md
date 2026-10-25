@@ -1,6 +1,6 @@
 # Relay4 frontend
 
-Dispatcher console: ongoing ElevenLabs calls and call summaries on the left, a full Louisiana map on the right with a pin at each reported incident location. Synthetic/demo only; it is read-only and never dispatches anyone.
+Dispatcher console with five pages: Overview, Incidents (the dispatch workspace), Responders, Call history and Settings. Everything is synthetic. The console never contacts emergency services.
 
 ## Run
 
@@ -10,35 +10,39 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-The backend must be running with `CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173`. Seed a call with `backend/scripts/simulate_voice_tool.py`.
+`npm run build` type-checks and builds. `npm run lint` lints.
 
-`npm run build` type-checks and builds; `npm run lint` lints.
+## Data sources
 
-## How it works
+Pick the data source under **Settings**, or set `VITE_DATA_MODE=demo` to start in demo mode. Switching remounts the app, so the two sources never mix.
 
-- Polls `GET /api/incidents` every 4 s. Opening a call fetches `GET /api/incidents/{id}` for the caller statements.
-- **Ongoing call** = status `intake` and updated within the last 10 minutes (`src/format.ts`). The backend has no call-ended event yet.
-- **Summary** = the incident `description` the ElevenLabs agent sent. Missing facts are shown as `Unknown`; caller quotes are labelled `Unverified` until verified.
-- **Louisiana focus**: the map can't pan or zoom out beyond the state, everything outside it is dimmed, and the 64 parishes are drawn (hover for name and call count). Each pinned call is labelled with its parish. Boundaries are simplified US Census data in `src/data/louisiana.json`, hidden past city zoom where they get inaccurate.
-- **Suggested priority (P1–P3)**: rule-based on the reported facts, always shown with its reasons (`src/intake.ts`). Calls are sorted by it. The dispatcher decides; nothing is dispatched.
-- **Still to ask**: the facts still unknown (location, confirmation, type, people, injuries, hazard) become prompts for the call-taker, with a facts meter on each card.
-- **Possibly related calls**: calls within 1 km and 2 h of each other (or with the same location text) are flagged and linked on the map with a dashed line. They are never merged automatically.
-- **Critical pings**: each pin sits on the geocoded point (coordinates shown on the card). P1 calls ping in red until a report is sent; live calls ping in their priority colour.
-- **Responder report (suggested, dispatcher approves)**: for the open call the console suggests the nearest free unit of the needed type (fire, EMS, police, water rescue) with a straight-line distance and ETA, and drafts the report (priority and reasons, location, parish, coordinates, facts, unverified caller quotes, open questions). The dispatcher can change the unit and must click **Approve & send**; nothing is sent automatically. Units are synthetic fixtures (`src/responders.ts`) and sending is simulated in localStorage because the backend has no responder/assignment API yet.
-- **Pins**: the backend stores locations as text, so the browser geocodes them with OpenStreetMap Nominatim, restricted to Louisiana (`src/geocode.ts`, max 1 request/s, cached in localStorage). A place that cannot be found, or that resolves outside Louisiana, is listed as "Not found on map", never guessed.
+| | Live backend | Demo data |
+|---|---|---|
+| Incidents, caller statements, agent history | `GET /api/incidents`, `GET /api/incidents/{id}`, polled every 4 s | `src/demo/data.ts` |
+| Map pins | Caller's location text geocoded with OpenStreetMap Nominatim, Louisiana only | Fixed demo positions in Hammond, LA |
+| Responders, assignment, response status | Shown as "not connected" | In-browser store (`src/demo/store.ts`) |
+| Call recording | Caller statements only; audio shown as "not connected" | Synthetic tone audio + transcript |
+
+If the backend is unreachable, live mode shows an offline banner and keeps the last data it received. It never substitutes demo data. [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) lists the endpoints the missing features need.
+
+## Behaviour
+
+- **Severity** (Critical / Major / Minor) is suggested by rules over the reported facts (`src/intake.ts`). Its reasons are always shown.
+- **Response status** (`src/response.ts`) is kept separate from the backend's intake status. It changes only on a recorded event: an assignment, a unit report, or a dispatcher's manual entry. It never changes on a timer.
+- **Unit ranking** puts available units first. They are sorted by routed ETA only when every candidate has one; otherwise by straight-line distance, which is labelled, and no ETA is shown.
+- **Assignment** needs an explicit unit choice and a click on confirm. The button is disabled while a request is pending. Unavailable units, and units already on the incident, can't be selected. An incident can have units from several services.
+- **URL state:** filters and the selected incident are kept in the hash, for example `#/incidents?service=fire&view=awaiting&id=INC-0241`. The sidebar returns to each page's last filters.
+- **Responsive layout:** three columns on wide screens, two below 1280 px, and tabs below 1100 px.
 
 ## Files
 
 ```
-src/api.ts                  backend requests
-src/hooks.ts                polling, detail fetch, geocoding
-src/geocode.ts              Nominatim lookup + cache
-src/format.ts               live-call rule, time and label formatting
-src/intake.ts               priority, missing facts, related calls
-src/louisiana.ts            parish lookup, state outline and mask
-src/responders.ts           synthetic units, unit suggestion, report text
-src/components/DispatchPanel.tsx
-src/components/CallSidebar.tsx
-src/components/IncidentMap.tsx
-src/styles.css              palette adapted from DispatcherAI's console
+src/api.ts, hooks.ts        backend requests and polling
+src/data.ts                 data-source switch (live vs demo) and app context
+src/demo/                   demo dataset, store and synthetic audio
+src/router.ts, mode.ts      hash routes, data-source setting
+src/intake.ts, services.ts  severity, service suggestion, missing facts, related calls
+src/response.ts             response steps, unit availability and ranking, metrics
+src/pages/                  Overview, Incidents, Responders, CallHistory, Settings
+src/components/             cards, badges, map, timeline, call recording, assign and activity panels
 ```

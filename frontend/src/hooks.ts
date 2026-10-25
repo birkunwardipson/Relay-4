@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchIncident, fetchIncidents } from "./api";
+import { ApiError, fetchIncident, fetchIncidents } from "./api";
 import { geocode } from "./geocode";
 import { parseTime } from "./format";
 import type { Incident, IncidentDetail, LatLng } from "./types";
@@ -8,11 +8,15 @@ const POLL_MS = 4000;
 
 export type Connection = "connecting" | "online" | "offline";
 
-export function useIncidents() {
+/** Polls the backend while enabled. On failure the last good list is kept and marked stale; nothing is substituted. */
+export function useIncidents(enabled: boolean) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [connection, setConnection] = useState<Connection>("connecting");
+  const [lastSync, setLastSync] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const poll = async () => {
       try {
@@ -20,8 +24,12 @@ export function useIncidents() {
         if (cancelled) return;
         setIncidents(list.sort((a, b) => parseTime(b.updated_at) - parseTime(a.updated_at)));
         setConnection("online");
-      } catch {
-        if (!cancelled) setConnection("offline");
+        setLastSync(Date.now());
+        setError(null);
+      } catch (caught) {
+        if (cancelled) return;
+        setConnection("offline");
+        setError(caught instanceof Error ? caught.message : "Request failed");
       }
     };
     poll();
@@ -30,27 +38,34 @@ export function useIncidents() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [enabled]);
 
-  return { incidents, connection };
+  return { incidents, connection, lastSync, error };
 }
 
-/** Full record (with caller statements) for the selected incident; refetched when it changes. */
-export function useIncidentDetail(id: string | null, updatedAt: string | undefined) {
-  const [detail, setDetail] = useState<IncidentDetail | null>(null);
+export type DetailState = { detail: IncidentDetail | null; error: string | null; notFound: boolean };
+
+/** Full record (caller statements and field history) for one incident; refetched when the incident changes. */
+export function useIncidentDetail(id: string | null, updatedAt: string | undefined): DetailState {
+  const [result, setResult] = useState<{ id: string; detail: IncidentDetail | null; error: string | null; notFound: boolean } | null>(null);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     fetchIncident(id)
-      .then((record) => !cancelled && setDetail(record))
-      .catch(() => undefined);
+      .then((detail) => !cancelled && setResult({ id, detail, error: null, notFound: false }))
+      .catch((caught) => {
+        if (cancelled) return;
+        const notFound = caught instanceof ApiError && caught.status === 404;
+        // Keep the previous copy of this incident if a refresh fails.
+        setResult((prev) => ({ id, detail: prev?.id === id ? prev.detail : null, error: caught instanceof Error ? caught.message : "Request failed", notFound }));
+      });
     return () => {
       cancelled = true;
     };
   }, [id, updatedAt]);
 
-  return detail?.id === id ? detail : null;
+  return result && result.id === id ? result : { detail: null, error: null, notFound: false };
 }
 
 /** location text → coordinates. Missing key = still looking up; null = not found. */
@@ -80,36 +95,4 @@ export function useNow(intervalMs = 5000) {
     return () => clearInterval(timer);
   }, [intervalMs]);
   return now;
-}
-
-export type Assignment = { unitId: string; sentAt: string; report: string };
-const ASSIGNMENTS_KEY = "relay4.assignments.v1";
-
-/** Dispatcher-approved reports. Simulated: kept in this browser until the backend has an assignment API. */
-export function useAssignments() {
-  const [assignments, setAssignments] = useState<Record<string, Assignment>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(ASSIGNMENTS_KEY) ?? "{}");
-    } catch {
-      return {};
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
-    } catch {
-      // Storage unavailable; assignments last for this session only.
-    }
-  }, [assignments]);
-
-  const send = (incidentId: string, assignment: Assignment) => setAssignments((prev) => ({ ...prev, [incidentId]: assignment }));
-  const cancel = (incidentId: string) =>
-    setAssignments((prev) => {
-      const next = { ...prev };
-      delete next[incidentId];
-      return next;
-    });
-
-  return { assignments, send, cancel };
 }

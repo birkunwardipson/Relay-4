@@ -36,3 +36,17 @@ export const STATUS_LABEL: Record<Incident["status"], string> = {
   needs_review: "Needs review",
   reviewed: "Reviewed",
 };
+
+export function duration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(total / 60);
+  return minutes ? `${minutes}m ${String(total % 60).padStart(2, "0")}s` : `${total}s`;
+}
+
+/** 0:42 style, for audio. */
+export function mmss(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+export const miles = (value: number) => `${value < 0.1 ? "<0.1" : value.toFixed(1)} mi`;
