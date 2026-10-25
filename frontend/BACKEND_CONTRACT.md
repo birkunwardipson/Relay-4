@@ -1,17 +1,19 @@
 # Backend contract needed by the dispatcher console
 
-The console calls only these existing endpoints:
+The console calls these existing endpoints:
 
 | Endpoint | Used for |
 |---|---|
-| `GET /api/incidents` | Incident queue, map, overview metrics (polled every 4 s) |
+| `GET /api/incidents` | Incident queue, map, overview metrics (polled every 2 s) |
 | `GET /api/incidents/{id}` | Caller statements (`evidence`) and agent field history (`history`) |
+| `GET /api/units`, `GET /api/assignments`, `GET /api/response-events` | Responder roster, assignments and response status (polled every 2 s) |
+| `POST/PATCH/DELETE /api/units…`, `POST /api/incidents/{id}/assignments`, `POST /api/incidents/{id}/response-events` | Dispatcher writes, sent with `X-Admin-API-Key` |
 
-Nothing else exists yet. These features run only in **demo mode** (`src/demo/`). In live mode the UI says they are not connected. The UI never falls back to demo data when a live request fails.
+**Sections 1–3 are implemented** (see `backend/README.md`, "Dispatch"). Writes use the admin key, which the dispatcher pastes on the Settings page; it is kept in that browser only and is never part of the build. Section 4 (recordings) and 5 (identity) are still open: recordings run only in **demo mode** (`src/demo/`). The UI never falls back to demo data when a live request fails.
 
-To connect a feature, implement the endpoints below, then add a live branch next to the demo one in `src/data.ts` (`useDataSource`, `useRecording`). Field names follow the frontend types in `src/response.ts` and `src/recording.ts`. They are a proposal and can be renamed. All endpoints need dispatcher authentication; the browser must never hold ElevenLabs keys or webhook secrets.
+To connect a remaining feature, implement its endpoints, then add a live branch next to the demo one in `src/data.ts` (`useRecording`). Field names follow the frontend types in `src/recording.ts`. The browser must never hold ElevenLabs keys or webhook secrets.
 
-## 1. Responders
+## 1. Responders (implemented)
 
 `GET /api/units` returns:
 
@@ -24,7 +26,7 @@ To connect a feature, implement the endpoints below, then add a live branch next
 - `point` is the unit's last reported position, or `null` if unknown. The UI never invents positions.
 - `route` is optional and comes only from a real routing provider, relative to an incident (for example `GET /api/incidents/{id}/units`). Without it, the UI sorts by straight-line distance, labels it as straight-line, and shows no ETA.
 
-## 2. Assignments
+## 2. Assignments (implemented)
 
 `POST /api/incidents/{id}/assignments` with body `{ "unit_id": "fd-04" }` and an `Idempotency-Key` header returns `201` with
 `{ "id", "incident_id", "unit_id", "service", "at" }`.
@@ -38,7 +40,7 @@ It must record an `assigned` response event. The UI already disables the confirm
 
 `GET /api/incidents/{id}/assignments` lists the assignments for an incident.
 
-## 3. Response status (separate from intake `status`)
+## 3. Response status, separate from intake `status` (implemented)
 
 Steps: `reported → assigned → accepted → en_route → on_scene → assisting → resolved`. Do not add these values to `IncidentStatus` (`intake | needs_review | reviewed`), which stays the intake/review status.
 

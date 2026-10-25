@@ -29,6 +29,9 @@ class SyncASGIClient:
     def patch(self, url, **kwargs):
         return self.request("PATCH", url, **kwargs)
 
+    def delete(self, url, **kwargs):
+        return self.request("DELETE", url, **kwargs)
+
 
 @pytest.fixture()
 def test_context(tmp_path):

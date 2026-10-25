@@ -10,7 +10,7 @@ FastAPI backend for Relay4's synthetic emergency voice intake workflow. MVP 1 re
 - Persist incidents, source evidence, conversation bindings, and correction history.
 - Make repeated webhook events idempotent using a unique event ID.
 - Protect manual incident writes with an admin API key.
-- Keep all dispatch approval outside the voice agent and outside this MVP.
+- Record dispatcher assignments and unit status, authenticated by the admin key. The voice agent can never assign or dispatch.
 - Provide a stable API boundary for future DeepSpace integration.
 
 ## Suggested structure
@@ -64,7 +64,17 @@ Interactive API documentation is available at <http://127.0.0.1:8000/docs>.
 - LLM-provided source quotes are stored in `incident_evidence` as `unverified`. This MVP does not mark evidence verified automatically.
 - `POST /api/incidents` and `PATCH /api/incidents/{id}` require `X-Admin-API-Key`. These are manual development/admin operations.
 - Incident statuses are limited to `intake`, `needs_review`, and `reviewed`.
-- No endpoint allows ElevenLabs to approve assignments or dispatch responders.
+- No endpoint allows ElevenLabs to approve assignments or dispatch responders. The webhook secret is not accepted on any dispatch endpoint.
+
+### Dispatch (responders, assignments, response status)
+
+Reads are open, like `GET /api/incidents`. Every write requires `X-Admin-API-Key` (the dispatcher console sends the key the dispatcher enters on its Settings page).
+
+- `GET /api/units`, `POST /api/units`, `PATCH /api/units/{id}` (position, out of service), `DELETE /api/units/{id}`. A unit with assignment history cannot be deleted (`409`); mark it out of service instead.
+- `POST /api/incidents/{id}/assignments` with `{"unit_id": ...}` and an optional `Idempotency-Key` header. It returns `201`; repeating the same key returns the original assignment with `200`. It returns `409` when the unit is out of service, is already on an unresolved incident or on this one, or the incident is resolved. Each assignment records an `assigned` response event.
+- `POST /api/incidents/{id}/response-events` with `{"unit_id", "status", "note"}` records a status a unit reported (`accepted`, `en_route`, `on_scene`, `assisting`, `resolved`). The unit must be assigned to the incident.
+- `GET /api/incidents/{id}/assignments`, `GET /api/incidents/{id}/response-events`, plus `GET /api/assignments` and `GET /api/response-events` for all incidents (the console polls these).
+- An incident's response status is its most advanced event. It changes only when an event is recorded, never on a timer. Assignments are recorded, not sent: nothing notifies a responder.
 
 ## Configure the ElevenLabs agent
 
@@ -113,4 +123,4 @@ The script uses synthetic data and does not require an ElevenLabs account.
 pytest -q
 ```
 
-The tests use a temporary SQLite database and cover authentication, validation, null handling, conversation binding, idempotent retries, corrections, evidence status, protected writes, and the absence of dispatch approval in the voice tool API.
+The tests use a temporary SQLite database and cover authentication, validation, null handling, conversation binding, idempotent retries, corrections, evidence status, protected writes, the dispatch rules (conflicts, idempotency, resolution), and that the voice tool's secret cannot assign units.

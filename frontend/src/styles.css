@@ -255,6 +255,13 @@ select { padding: 8px 10px; border: 1px solid var(--border-strong); border-radiu
 .map-popup { display: flex; flex-direction: column; gap: 6px; font: 14px/1.4 var(--sans); min-width: 200px; }
 .map-popup a { font-weight: 600; }
 @keyframes ping { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
+.map-ping { position: relative; display: block; width: 120px; height: 120px; pointer-events: none; color: #64748b; }
+.map-ping.critical { color: var(--red); }
+.map-ping.major { color: #d98a06; }
+.map-ping i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid currentColor; background: color-mix(in srgb, currentColor 18%, transparent); opacity: 0; animation: radar 1.5s ease-out 3; }
+.map-ping i:nth-child(2) { animation-delay: 0.5s; }
+.map-ping i:nth-child(3) { animation-delay: 1s; }
+@keyframes radar { from { transform: scale(0.15); opacity: 1; } to { transform: scale(1); opacity: 0; } }
 
 /* Dispatch workspace */
 .workspace { display: grid; grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) minmax(300px, 340px); gap: 16px; align-items: start; }
@@ -438,3 +445,4 @@ select { padding: 8px 10px; border: 1px solid var(--border-strong); border-radiu
   .add-responder { grid-template-columns: minmax(0, 1fr); }
   .map-responders, .map-detail { height: 300px; }
 }
+.settings input[type="password"] { flex: 1; min-width: 200px; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card); }

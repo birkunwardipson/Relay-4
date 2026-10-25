@@ -2,16 +2,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import sessionmaker
 
+from app.api.dispatch import router as dispatch_router
 from app.api.elevenlabs import router as elevenlabs_router
 from app.api.incidents import router as incidents_router
 from app.config import Settings, get_settings
 from app.database import Base, make_engine
 from app.models import (  # noqa: F401 - register all models before create_all
+    Assignment,
     ConversationBinding,
     Incident,
     IncidentEvidence,
     IncidentHistory,
     ProcessedToolEvent,
+    ResponseEvent,
+    Unit,
 )
 
 
@@ -34,12 +38,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             CORSMiddleware,
             allow_origins=app_settings.configured_cors_origins,
             allow_credentials=False,
-            allow_methods=["GET", "POST", "PATCH"],
-            allow_headers=["Content-Type", "X-Admin-API-Key", app_settings.elevenlabs_webhook_header],
+            allow_methods=["GET", "POST", "PATCH", "DELETE"],
+            allow_headers=["Content-Type", "X-Admin-API-Key", "Idempotency-Key", app_settings.elevenlabs_webhook_header],
         )
 
     app.include_router(incidents_router)
     app.include_router(elevenlabs_router)
+    app.include_router(dispatch_router)
 
     @app.get("/health", tags=["system"])
     async def health():

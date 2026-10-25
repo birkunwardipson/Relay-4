@@ -4,7 +4,7 @@ import { humanize, parseTime } from "../format";
 import type { Call } from "../intake";
 import { STATUS_TEXT, STEPS, type ResponseStatus } from "../response";
 import type { IncidentDetail } from "../types";
-import { ActivityFeed, Notice, type FeedItem } from "./Cards";
+import { ActivityFeed, KeyNeeded, Notice, type FeedItem } from "./Cards";
 
 const ACTOR: Record<string, string> = { voice_agent: "voice agent", dispatcher: "dispatcher" };
 const MANUAL_STEPS = STEPS.filter((step) => STEPS.indexOf(step) > STEPS.indexOf("assigned"));
@@ -71,6 +71,7 @@ function ManualUpdate({ incidentId, unitIds, unitName }: { incidentId: string; u
     >
       <h3 className="eyebrow">Record a unit status update</h3>
       <p className="small muted">For status a unit reported by radio or phone. Saved with the time you confirm it.</p>
+      <KeyNeeded />
       <div className="row">
         <label>
           <span className="sr-only">Unit</span>

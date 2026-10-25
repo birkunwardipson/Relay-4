@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ApiError, fetchIncident, fetchIncidents } from "./api";
+import { ApiError, fetchAssignments, fetchIncident, fetchIncidents, fetchResponseEvents, fetchUnits } from "./api";
 import { geocode } from "./geocode";
 import { parseTime } from "./format";
+import type { Assignment, ResponseEvent, Unit } from "./response";
 import type { Incident, IncidentDetail, LatLng } from "./types";
 
-const POLL_MS = 4000;
+const POLL_MS = 2000;
 
 export type Connection = "connecting" | "online" | "offline";
 
@@ -43,7 +44,44 @@ export function useIncidents(enabled: boolean) {
   return { incidents, connection, lastSync, error };
 }
 
-export type DetailState = { detail: IncidentDetail | null; error: string | null; notFound: boolean };
+export type DispatchFeed = { units: Unit[]; assignments: Assignment[]; events: ResponseEvent[] };
+
+/**
+ * Responders, assignments and response events, polled with the incidents. `supported` is false when the backend
+ * predates these endpoints (404), so the UI can say so instead of showing an empty roster. `refresh` re-polls at
+ * once, used right after a write so the change shows without waiting for the next tick.
+ */
+export function useDispatchFeed(enabled: boolean) {
+  const [feed, setFeed] = useState<DispatchFeed | null>(null);
+  const [supported, setSupported] = useState(true);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const [units, assignments, events] = await Promise.all([fetchUnits(), fetchAssignments(), fetchResponseEvents()]);
+        if (cancelled) return;
+        setFeed({ units, assignments, events });
+        setSupported(true);
+      } catch (caught) {
+        // Keep the last good copy; connection state comes from the incident poll.
+        if (!cancelled && caught instanceof ApiError && caught.status === 404) setSupported(false);
+      }
+    };
+    poll();
+    const timer = setInterval(poll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [enabled, tick]);
+
+  return { feed, supported, refresh: () => setTick((value) => value + 1) };
+}
+
+export type DetailState ={ detail: IncidentDetail | null; error: string | null; notFound: boolean };
 
 /** Full record (caller statements and field history) for one incident; refetched when the incident changes. */
 export function useIncidentDetail(id: string | null, updatedAt: string | undefined): DetailState {

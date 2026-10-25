@@ -1,3 +1,4 @@
+from app.models.dispatch import RESPONSE_STEPS, Assignment, ResponseEvent, ResponseStatus, Service, Unit
 from app.models.incident import (
     ConversationBinding,
     EvidenceVerificationStatus,
@@ -9,6 +10,8 @@ from app.models.incident import (
 )
 
 __all__ = [
+    "RESPONSE_STEPS",
+    "Assignment",
     "ConversationBinding",
     "EvidenceVerificationStatus",
     "Incident",
@@ -16,4 +19,8 @@ __all__ = [
     "IncidentHistory",
     "IncidentStatus",
     "ProcessedToolEvent",
+    "ResponseEvent",
+    "ResponseStatus",
+    "Service",
+    "Unit",
 ]
