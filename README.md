@@ -48,11 +48,6 @@ The incident workspace combines the queue, caller facts, evidence and history, m
 
 ![Relay4 incident workspace](docs/images/incidents.png)
 
-### Settings and data source
-
-The console can read the live backend or use isolated synthetic demo data. The dispatcher key is kept in the browser and is only sent for authenticated writes.
-
-![Relay4 settings](docs/images/settings.png)
 
 ## Repository guide
 
