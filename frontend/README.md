@@ -1,6 +1,10 @@
 # Relay4 frontend
 
+[← Project overview](../README.md) · [Running guide](../RUNNING.md) · [Backend README](../backend/README.md)
+
 Dispatcher console with five pages: Overview, Incidents (the dispatch workspace), Responders, Call history and Settings. Everything is synthetic. The console never contacts emergency services.
+
+For the complete two-terminal setup, ElevenLabs tunnel, webhook configuration, and troubleshooting, use [`../RUNNING.md`](../RUNNING.md). This document focuses on the React/Vite application.
 
 ## Run
 
