@@ -126,7 +126,7 @@ export function useGeocodes(incidents: Incident[]) {
   return points;
 }
 
-export function useNow(intervalMs = 5000) {
+export function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), intervalMs);

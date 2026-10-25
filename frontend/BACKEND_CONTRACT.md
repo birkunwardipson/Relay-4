@@ -69,4 +69,4 @@ To keep the overview cheap, `GET /api/incidents` could include `response_status`
 
 ## 5. Dispatcher identity
 
-There is no user or session API. The header shows "No sign-in configured" in live mode.
+There is no user or session API. The header shows a fixed operator name ("Pete", set in `src/App.tsx`) in live mode; it is not a sign-in.

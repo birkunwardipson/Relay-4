@@ -49,7 +49,11 @@ export function IncidentCard({ call, now, response, selected, href }: { call: Ca
           ) : (
             <span className="muted small">Intake: {STATUS_LABEL[incident.status]}</span>
           )}
-          {call.live && <Pill tone="danger">● Call in progress</Pill>}
+          {call.live ? (
+            <Pill tone="danger">● Call in progress</Pill>
+          ) : call.incident.conversation_id ? (
+            <Pill tone="neutral">● Call ended</Pill>
+          ) : null}
         </span>
       </span>
       <Icon name="chevron" className="chev" />

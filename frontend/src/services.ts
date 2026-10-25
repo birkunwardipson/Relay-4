@@ -27,7 +27,28 @@ export function serviceOf(incident: Incident): Service | null {
   return null;
 }
 
-export const isVehicle = (incident: Incident) => /collision|crash|vehicle|traffic/i.test(incident.incident_type ?? "");
+// Every service the report calls for, each with its reason; first match per service wins. A fire also gets an
+// ambulance, since smoke and burns are the usual casualties.
+const NEEDS: [RegExp, Service, string][] = [
+  [/fire|smoke|burn|explos/i, "fire", "Fire or smoke"],
+  [/fire|smoke|burn|explos/i, "medical", "Standby for smoke inhalation or burns"],
+  [/gas.leak|fuel.leak|hazmat|chemical|downed (power )?line|live wire/i, "fire", "Hazardous material"],
+  [/rising.water|flood|drown|swept|submerged|stranded/i, "fire", "Water rescue"],
+  [/trapped|entrap|pinned/i, "fire", "Person trapped"],
+  [/shoot|gun|weapon|stab|assault|robbery|fight|burglar|theft/i, "police", "Crime or weapon"],
+  [/collision|crash|traffic/i, "police", "Traffic scene"],
+  [/medical|breath|unconscious|unresponsive|cardiac|chest|stroke|seizure|bleeding|collapsed|overdose|fracture/i, "medical", "Medical emergency"],
+];
+const NO_INJURY = /^\s*(no|none|unknown|n\/a|not? (injured|hurt))\b/i;
+
+export function servicesFor(incident: Incident): { service: Service; reason: string }[] {
+  const text = [incident.incident_type, incident.hazard, incident.description, incident.injuries].filter(Boolean).join(" ").replaceAll("_", " ");
+  const found = NEEDS.filter(([pattern]) => pattern.test(text)).map(([, service, reason]) => ({ service, reason }));
+  if (incident.injuries && !NO_INJURY.test(incident.injuries)) found.push({ service: "medical", reason: "Injuries reported" });
+  return found.filter((item, index) => found.findIndex((other) => other.service === item.service) === index);
+}
+
+export const isVehicle =(incident: Incident) => /collision|crash|vehicle|traffic/i.test(incident.incident_type ?? "");
 
 export type Severity = "critical" | "major" | "minor";
 export const SEVERITY: Record<Priority, Severity> = { 1: "critical", 2: "major", 3: "minor" };
