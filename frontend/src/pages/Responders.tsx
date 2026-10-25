@@ -1,11 +1,11 @@
 import { useRef, useState, type FormEvent } from "react";
-import { Notice, ResponderCard } from "../components/Cards";
+import { KeyNeeded, Notice, ResponderCard } from "../components/Cards";
 import { Icon } from "../components/Icon";
 import { MapView, type MapUnit } from "../components/MapView";
-import { useAppData } from "../data";
+import { useAppData, type RosterActions } from "../data";
 import { geocode } from "../geocode";
 import { rankUnits, type UnitState } from "../response";
-import { addRosterUnit, removeRosterUnit, updateRosterUnit } from "../roster";
+import { getRoster, removeRosterUnit, useRoster } from "../roster";
 import { href, navigate, useRoute } from "../router";
 import { codeOf, SERVICE_ICON, SERVICES, UNIT_SERVICE_LABEL, type Service } from "../services";
 import type { LatLng } from "../types";
@@ -18,7 +18,9 @@ const STATES: { key: UnitState["kind"] | "all"; label: string }[] = [
 ];
 
 export function Responders() {
-  const { units, unitStates, calls, mode } = useAppData();
+  const { units, unitStates, calls, mode, dispatch, roster } = useAppData();
+  const browserOnly = useRoster();
+  const [actionError, setActionError] = useState<string | null>(null);
   const { params } = useRoute();
   const service = (params.get("service") ?? "all") as Service | "all";
   const state = (params.get("state") ?? "all") as UnitState["kind"] | "all";
@@ -32,6 +34,10 @@ export function Responders() {
     .filter((item): item is typeof item & { unit: { point: LatLng } } => Boolean(item.unit.point))
     .map((item) => ({ unit: item.unit as MapUnit["unit"], state: item.state.kind }));
   const unplaced = shown.filter((item) => !item.unit.point).length;
+  const run = (action: Promise<void>) => {
+    setActionError(null);
+    action.catch((caught) => setActionError(caught instanceof Error ? caught.message : "The change was not saved."));
+  };
 
   return (
     <div className="page responders">
@@ -42,12 +48,12 @@ export function Responders() {
             <Icon name={adding ? "x" : "plusCircle"} /> {adding ? "Close" : "Add responder"}
           </button>
         </div>
-        {adding && <AddResponder draft={draft} setDraft={setDraft} defaultService={service === "all" ? "fire" : service} onDone={() => { setDraft(null); setAdding(false); }} />}
+        {adding && <AddResponder roster={roster} draft={draft} setDraft={setDraft} defaultService={service === "all" ? "fire" : service} onDone={() => { setDraft(null); setAdding(false); }} />}
         <MapView
           calls={calls.filter((call) => call.point)}
           units={mapUnits}
           className="map-responders"
-          label={adding ? "Click the map to place the new responder" : mode === "demo" ? "OpenStreetMap · demo + added responders" : "OpenStreetMap · responders added in this browser"}
+          label={adding ? "Click the map to place the new responder" : mode === "demo" ? "OpenStreetMap · demo + added responders" : dispatch ? "OpenStreetMap · backend responder roster" : "OpenStreetMap · responders added in this browser"}
           onPick={adding ? setDraft : undefined}
           draft={adding ? draft : null}
         />
@@ -76,9 +82,15 @@ export function Responders() {
             ))}
           </div>
           {mode === "live" && (
-            <p className="small muted">The backend has no responder API. Responders here are the ones you added in this browser; their availability is what you set.</p>
+            <p className="small muted">
+              {dispatch
+                ? "Responders are stored by the backend. Positions are where the dispatcher placed them; nothing moves them."
+                : "This backend has no responder API. Responders here are the ones you added in this browser; their availability is what you set."}
+            </p>
           )}
         </div>
+        {mode === "live" && dispatch && browserOnly.length > 0 && <UploadBrowserRoster roster={roster} count={browserOnly.length} />}
+        {actionError && <Notice tone="error" title="Change not saved">{actionError}</Notice>}
         {!units.length && <Notice title="No responders yet">Use “Add responder” to add a unit and place it on the map.</Notice>}
         {SERVICES.filter((s) => service === "all" || s === service).map((s) => {
           const group = shown.filter((item) => item.unit.service === s);
@@ -103,13 +115,13 @@ export function Responders() {
                             Open {codeOf(item.state.incidentId)} <Icon name="chevron" size={16} />
                           </a>
                         )}
-                        {item.unit.local && (
+                        {roster.canEdit(item.unit) && (
                           <>
                             <label className="check small">
-                              <input type="checkbox" checked={item.unit.outOfService} onChange={(event) => updateRosterUnit(item.unit.id, { outOfService: event.target.checked })} />
+                              <input type="checkbox" checked={item.unit.outOfService} onChange={(event) => run(roster.update(item.unit.id, { outOfService: event.target.checked }))} />
                               Out of service
                             </label>
-                            <button className="btn small" onClick={() => removeRosterUnit(item.unit.id)} disabled={item.state.kind === "assigned"} title={item.state.kind === "assigned" ? "Unit is on an incident" : undefined}>
+                            <button className="btn small" onClick={() => run(roster.remove(item.unit.id))} disabled={item.state.kind === "assigned"} title={item.state.kind === "assigned" ? "Unit is on an incident" : undefined}>
                               Remove {item.unit.name}
                             </button>
                           </>
@@ -129,13 +141,47 @@ export function Responders() {
   );
 }
 
-function AddResponder({ draft, setDraft, defaultService, onDone }: { draft: LatLng | null; setDraft: (point: LatLng | null) => void; defaultService: Service; onDone: () => void }) {
+/** Responders added before the backend had a roster live only in this browser; this moves them to the backend. */
+function UploadBrowserRoster({ roster, count }: { roster: RosterActions; count: number }) {
+  const [state, setState] = useState<{ kind: "idle" | "pending" } | { kind: "error"; message: string }>({ kind: "idle" });
+
+  const upload = async () => {
+    setState({ kind: "pending" });
+    try {
+      // One at a time, removing each locally only after the backend has it, so a failure part-way loses nothing.
+      for (const unit of getRoster()) {
+        await roster.add({ name: unit.name, service: unit.service, agency: unit.agency, point: unit.point, outOfService: unit.outOfService });
+        removeRosterUnit(unit.id);
+      }
+      setState({ kind: "idle" });
+    } catch (caught) {
+      setState({ kind: "error", message: caught instanceof Error ? caught.message : "Upload failed." });
+    }
+  };
+
+  return (
+    <Notice
+      tone={state.kind === "error" ? "error" : "warn"}
+      title={`${count} responder${count > 1 ? "s" : ""} saved only in this browser`}
+      action={
+        <button className="btn small" onClick={upload} disabled={state.kind === "pending"} aria-busy={state.kind === "pending"}>
+          {state.kind === "pending" ? "Uploading…" : "Upload to backend"}
+        </button>
+      }
+    >
+      {state.kind === "error" ? state.message : "They are not in the backend roster, so they cannot be assigned."}
+    </Notice>
+  );
+}
+
+function AddResponder({ roster, draft, setDraft, defaultService, onDone }: { roster: RosterActions; draft: LatLng | null; setDraft: (point: LatLng | null) => void; defaultService: Service; onDone: () => void }) {
   const [name, setName] = useState("");
   const [service, setService] = useState<Service>(defaultService);
   const [agency, setAgency] = useState("");
   const [address, setAddress] = useState("");
   const [lookup, setLookup] = useState<{ kind: "idle" | "pending" | "notfound" }>({ kind: "idle" });
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   const find = async () => {
@@ -146,8 +192,9 @@ function AddResponder({ draft, setDraft, defaultService, onDone }: { draft: LatL
     if (point) setDraft(point);
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     if (!name.trim()) {
       setError("Enter a unit name.");
       nameRef.current?.focus();
@@ -157,12 +204,23 @@ function AddResponder({ draft, setDraft, defaultService, onDone }: { draft: LatL
       setError("Set the location: click the map or look up an address.");
       return;
     }
-    addRosterUnit({ name: name.trim(), service, agency: agency.trim() || "Added by dispatcher", point: draft, outOfService: false });
-    onDone();
+    setSaving(true);
+    setError(null);
+    try {
+      await roster.add({ name: name.trim(), service, agency: agency.trim() || "Added by dispatcher", point: draft, outOfService: false });
+      onDone();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The responder was not saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <form id="add-responder" className="add-responder" onSubmit={submit} noValidate>
+      <div className="full">
+        <KeyNeeded />
+      </div>
       <label>
         <span>Unit name</span>
         <input ref={nameRef} value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Engine 21" required autoFocus />
@@ -205,8 +263,8 @@ function AddResponder({ draft, setDraft, defaultService, onDone }: { draft: LatL
       </p>
       {error && <p className="small error-text full" role="alert">{error}</p>}
       <div className="full row-end">
-        <button type="submit" className="btn primary">
-          <Icon name="check" /> Add to map
+        <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
+          <Icon name="check" /> {saving ? "Saving…" : "Add to map"}
         </button>
       </div>
     </form>

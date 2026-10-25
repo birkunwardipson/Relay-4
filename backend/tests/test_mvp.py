@@ -179,4 +179,10 @@ def test_webhook_cannot_approve_dispatch_assignment(test_context, webhook_header
         json=webhook_payload(event_id="event-no-dispatch"),
     )
     assert response.status_code == 200
-    assert not any(route.path.endswith("/assignments") for route in test_context.app.routes)
+    incident_id = response.json()["incident_id"]
+    # The webhook secret is not a dispatcher credential: the agent cannot assign units.
+    assigned = test_context.post(
+        f"/api/incidents/{incident_id}/assignments", headers=webhook_headers, json={"unit_id": "any-unit"}
+    )
+    assert assigned.status_code == 401
+    assert test_context.get(f"/api/incidents/{incident_id}/assignments").json() == []

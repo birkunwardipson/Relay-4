@@ -1,5 +1,5 @@
 import L from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import { humanize } from "../format";
 import type { Call } from "../intake";
@@ -44,17 +44,55 @@ const unitIcon = (unit: Unit, state: UnitState["kind"], chosen: boolean, dim: bo
     iconAnchor: [14, 14],
   });
 
-/** Fit the view to what is shown whenever the set of points changes; Louisiana when there is nothing. */
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Fly the view to what is shown whenever the set of points changes; Louisiana when there is nothing. */
 function FitTo({ points }: { points: LatLng[] }) {
   const map = useMap();
   const key = points.map((point) => point.join(",")).join(";");
   useEffect(() => {
     const list = key ? key.split(";").map((pair) => pair.split(",").map(Number) as LatLng) : [];
-    if (!list.length) map.fitBounds(LOUISIANA_BOUNDS, { padding: [16, 16] });
-    else if (list.length === 1) map.setView(list[0], 15);
-    else map.fitBounds(L.latLngBounds(list), { padding: [40, 40], maxZoom: 15 });
+    const motion = { animate: !reducedMotion(), duration: 0.8 };
+    if (!list.length) map.flyToBounds(LOUISIANA_BOUNDS, { padding: [16, 16], ...motion });
+    else if (list.length === 1) map.flyTo(list[0], 15, motion);
+    else map.flyToBounds(L.latLngBounds(list), { padding: [40, 40], maxZoom: 15, ...motion });
   }, [map, key]);
   return null;
+}
+
+const PING_MS = 4500;
+
+/** Ripple at a live call's location when it first appears on the map or moves, so new and corrected locations stand out. */
+function Pings({ calls }: { calls: (Call & { point: LatLng })[] }) {
+  const seen = useRef(new Map<string, string>());
+  const [pings, setPings] = useState<{ id: string; point: LatLng; severity: string; at: number }[]>([]);
+  const key = calls.map((call) => `${call.incident.id}@${call.point.join(",")}${call.live ? "!" : ""}`).join(";");
+
+  useEffect(() => {
+    const fresh = calls.filter((call) => call.live && seen.current.get(call.incident.id) !== call.point.join(","));
+    for (const call of calls) seen.current.set(call.incident.id, call.point.join(","));
+    if (!fresh.length) return;
+    const at = Date.now();
+    setPings((prev) => [
+      ...prev.filter((ping) => !fresh.some((call) => call.incident.id === ping.id)),
+      ...fresh.map((call) => ({ id: call.incident.id, point: call.point, severity: SEVERITY[call.priority], at })),
+    ]);
+    // Not cleared on the next change: each ping removes itself even if more arrive in the meantime.
+    setTimeout(() => setPings((prev) => prev.filter((ping) => ping.at !== at)), PING_MS);
+    // `key` captures every change to the calls that matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return pings.map((ping) => (
+    <Marker
+      key={`${ping.id}-${ping.at}`}
+      position={ping.point}
+      interactive={false}
+      keyboard={false}
+      zIndexOffset={-50}
+      icon={L.divIcon({ className: "", html: `<span class="map-ping ${ping.severity}"><i></i><i></i><i></i></span>`, iconSize: [120, 120], iconAnchor: [60, 60] })}
+    />
+  ));
 }
 
 export type MapUnit = { unit: Unit & { point: LatLng }; state: UnitState["kind"]; dim?: boolean };
@@ -90,6 +128,7 @@ export function MapView({ calls, units, selectedId, chosenUnitId, statusOf, popu
       <MapContainer bounds={LOUISIANA_BOUNDS} maxBounds={PAN_LIMIT} maxBoundsViscosity={1} minZoom={6} className="map" scrollWheelZoom={false}>
         <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' maxZoom={19} />
         <FitTo points={fitPoints} />
+        <Pings calls={pinned} />
         {onPick && <ClickToPick onPick={onPick} />}
         {draft && (
           <CircleMarker center={draft} radius={10} pathOptions={{ color: "#0f6e6e", weight: 3, fillOpacity: 0.3 }}>

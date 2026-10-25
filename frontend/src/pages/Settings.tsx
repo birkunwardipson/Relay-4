@@ -1,4 +1,5 @@
-import { API_BASE_URL } from "../api";
+import { useState } from "react";
+import { API_BASE_URL, setDispatcherKey, useDispatcherKey } from "../api";
 import { Notice } from "../components/Cards";
 import { useAppData } from "../data";
 import { resetDemo, setFailNextAssignment, useDemoState } from "../demo/store";
@@ -6,8 +7,10 @@ import { clock } from "../format";
 import { setMode } from "../mode";
 
 export function Settings() {
-  const { mode, connection, lastSync } = useAppData();
+  const { mode, connection, lastSync, dispatch } = useAppData();
   const demo = useDemoState();
+  const key = useDispatcherKey();
+  const [draftKey, setDraftKey] = useState("");
 
   return (
     <div className="page narrow settings">
@@ -20,8 +23,8 @@ export function Settings() {
             <span>
               <strong>Live backend</strong>
               <span className="small muted">
-                Incidents, caller statements and history from <span className="mono">{API_BASE_URL}</span>, polled every 4 s. Responders, assignments, response status and
-                recordings are not available until the backend provides them.
+                Incidents, responders, assignments and response status from <span className="mono">{API_BASE_URL}</span>, polled every 2 s. Call recordings are not
+                available until the backend provides them.
               </span>
             </span>
           </label>
@@ -41,6 +44,36 @@ export function Settings() {
           </p>
         )}
       </section>
+
+      {mode === "live" && (
+        <section className="card" aria-labelledby="key-h">
+          <h2 id="key-h">Dispatcher key</h2>
+          <p className="small muted">
+            Needed to add responders, assign units and record status updates. It is the backend's <span className="mono">ADMIN_API_KEY</span>, kept only in this
+            browser and sent with each change. Viewing does not need it.
+          </p>
+          {key ? (
+            <p className="line">
+              <span className="ok-text">Key saved in this browser.</span>
+              <button className="btn small" onClick={() => setDispatcherKey("")}>Forget key</button>
+            </p>
+          ) : (
+            <form
+              className="line"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setDispatcherKey(draftKey);
+                setDraftKey("");
+              }}
+            >
+              <label className="sr-only" htmlFor="dispatcher-key">Dispatcher key</label>
+              <input id="dispatcher-key" type="password" autoComplete="off" value={draftKey} onChange={(event) => setDraftKey(event.target.value)} placeholder="Paste the key" />
+              <button className="btn primary" type="submit" disabled={!draftKey.trim()}>Save key</button>
+            </form>
+          )}
+          {!dispatch && <p className="small warn-text">This backend has no dispatch API yet; update and restart it to use assignments.</p>}
+        </section>
+      )}
 
       {mode === "demo" && (
         <section className="card" aria-labelledby="demo-h">
@@ -78,7 +111,7 @@ export function Settings() {
         </dl>
       </section>
 
-      <Notice title="Not a live dispatch system">Relay4 does not contact emergency services. Assignments are only recorded where the data source supports it.</Notice>
+      <Notice title="Not a live dispatch system">Relay4 does not contact emergency services. Assignments are recorded, not sent: no responder is notified.</Notice>
     </div>
   );
 }

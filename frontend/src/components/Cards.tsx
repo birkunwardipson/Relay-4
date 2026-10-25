@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
+import { useDispatcherKey } from "../api";
+import { useAppData } from "../data";
 import { ago, clock, humanize, STATUS_LABEL } from "../format";
 import type { Call } from "../intake";
 import { travelText, type RankedUnit, type ResponseState } from "../response";
+import { href } from "../router";
 import { codeOf, UNIT_SERVICE_LABEL } from "../services";
 import { IncidentGlyph, Pill, SeverityBadge, StatusBadge } from "./Badges";
 import { Icon, type IconName } from "./Icon";
@@ -118,5 +121,25 @@ export function Notice({ tone = "info", title, children, action }: { tone?: "inf
       </div>
       {action}
     </div>
+  );
+}
+
+/** Shown before a live change is attempted, so the dispatcher learns about the key before filling in a form. */
+export function KeyNeeded() {
+  const { mode, dispatch } = useAppData();
+  const key = useDispatcherKey();
+  if (mode !== "live" || !dispatch || key) return null;
+  return (
+    <Notice
+      tone="warn"
+      title="Dispatcher key needed"
+      action={
+        <a className="btn small" href={href("settings")}>
+          Open Settings
+        </a>
+      }
+    >
+      Changes need the backend's admin key. Paste it once in Settings; it stays in this browser.
+    </Notice>
   );
 }

@@ -8,7 +8,7 @@ import type { Pick } from "../pages/Incidents";
 import { rankUnits, STATUS_TEXT } from "../response";
 import { serviceOf, SERVICE_ICON, SERVICES, UNIT_SERVICE_LABEL, type Service } from "../services";
 import { StatusBadge } from "./Badges";
-import { Notice, ResponderCard } from "./Cards";
+import { KeyNeeded, Notice, ResponderCard } from "./Cards";
 import { Icon } from "./Icon";
 
 type Result = { kind: "pending"; unit: string } | { kind: "success"; unit: string; at: string } | { kind: "error"; unit: string; message: string } | null;
@@ -47,8 +47,8 @@ export function AssignPanel({ call, pick, onPick }: { call: Call; pick: Pick; on
           <Icon name="plusCircle" /> Add responder
         </a>
         <Notice tone="warn" title="Assignment not connected">
-          Responders here were added in this browser; distances are straight-line. The backend has no assignment API, so nothing can be dispatched from here.
-          See BACKEND_CONTRACT.md.
+          This backend has no assignment API (it predates /api/units and /api/incidents/…/assignments), so nothing can be dispatched from here. Update and
+          restart the backend. Responders shown were added in this browser; distances are straight-line.
         </Notice>
         <button className="btn block" onClick={() => setMode("demo")}>
           <Icon name="database" /> Try assignment with demo data
@@ -170,6 +170,7 @@ export function AssignPanel({ call, pick, onPick }: { call: Call; pick: Pick; on
         {mode === "demo" && " Demo positions."}
       </p>
 
+      {!resolved && <KeyNeeded />}
       {!resolved && (
         <button className="btn primary block" onClick={confirm} disabled={!chosen || pending} aria-busy={pending}>
           <Icon name="truck" />
@@ -179,7 +180,7 @@ export function AssignPanel({ call, pick, onPick }: { call: Call; pick: Pick; on
       <div aria-live="polite">
         {result?.kind === "success" && (
           <Notice tone="info" title={`${result.unit} assigned at ${clock(result.at)}`}>
-            {mode === "demo" ? "Demo only: recorded in this browser. No responder was notified." : "Recorded by the backend."}
+            {mode === "demo" ? "Demo only: recorded in this browser. No responder was notified." : "Recorded by the backend. No responder was notified; contact the unit directly."}
           </Notice>
         )}
         {result?.kind === "error" && (

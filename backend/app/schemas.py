@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models import EvidenceVerificationStatus, IncidentStatus
+from app.models import EvidenceVerificationStatus, IncidentStatus, ResponseStatus, Service, Unit
 
 
 class IncidentFields(BaseModel):
@@ -94,3 +94,67 @@ class WebhookResponse(BaseModel):
     status: IncidentStatus
     created: bool
     duplicate: bool
+
+
+LatLng = tuple[float, float]
+
+
+class UnitCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    service: Service
+    agency: str = Field(default="Added by dispatcher", min_length=1, max_length=255)
+    point: LatLng | None = None
+    out_of_service: bool = False
+
+
+class UnitPatch(BaseModel):
+    point: LatLng | None = None
+    out_of_service: bool | None = None
+
+
+class UnitRead(BaseModel):
+    id: str
+    name: str
+    service: Service
+    agency: str
+    point: LatLng | None
+    out_of_service: bool
+    # Only set from a real routing provider; there is none yet.
+    route: None = None
+
+    @classmethod
+    def of(cls, unit: Unit) -> "UnitRead":
+        point = (unit.lat, unit.lng) if unit.lat is not None and unit.lng is not None else None
+        return cls(id=unit.id, name=unit.name, service=unit.service, agency=unit.agency, point=point, out_of_service=unit.out_of_service)
+
+
+class AssignmentCreate(BaseModel):
+    unit_id: str = Field(min_length=1, max_length=36)
+
+
+class AssignmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    incident_id: str
+    unit_id: str
+    service: Service
+    at: datetime
+
+
+class ResponseEventCreate(BaseModel):
+    unit_id: str = Field(min_length=1, max_length=36)
+    status: ResponseStatus
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class ResponseEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    incident_id: str
+    status: ResponseStatus
+    unit_id: str | None
+    at: datetime
+    actor: str
+    note: str | None
