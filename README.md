@@ -18,7 +18,7 @@ Relay4 is a Louisiana-focused emergency voice-intake and incident-coordination M
 
 ## How the system fits together
 
-![Relay4 system architecture](relay4_system_architecture.png)
+![Relay4 system architecture](docs/images/relay4_system_architecture.png)
 
 The voice webhook can open and update an incident, but it cannot assign a responder. The backend returns `dispatch_confirmed: false` until a dispatcher records an assignment. The current MVP does not notify a real responder or calculate road ETA; straight-line distances are labelled as such.
 
