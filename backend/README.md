@@ -1,6 +1,10 @@
-# Relay4 MVP 1 Backend
+# Relay4 backend
+
+[← Project overview](../README.md) · [Running guide](../RUNNING.md) · [Frontend README](../frontend/README.md)
 
 FastAPI backend for Relay4's synthetic emergency voice intake workflow. MVP 1 receives structured facts from an ElevenLabs Conversational AI webhook tool, persists incidents in SQLite, and records corrections without making dispatch decisions.
+
+For local setup, tunnel configuration, ElevenLabs fields, smoke tests, and troubleshooting, use [`../RUNNING.md`](../RUNNING.md). This document focuses on the backend contract and implementation.
 
 ## Responsibilities
 
