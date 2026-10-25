@@ -1,8 +1,8 @@
 import type { Incident } from "./types";
 
 // A call counts as ongoing while it is still in intake and the agent has sent an
-// update recently. The backend has no explicit call-ended event yet.
-export const LIVE_WINDOW_MS = 10 * 60 * 1000;
+// update within the last 20 seconds. The backend has no explicit call-ended event yet.
+export const LIVE_WINDOW_MS = 20 * 1000;
 
 // SQLite returns UTC timestamps without an offset; treat them as UTC.
 export function parseTime(value: string): number {

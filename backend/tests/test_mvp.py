@@ -32,6 +32,10 @@ def test_webhook_creates_incident_and_unverified_evidence(test_context, webhook_
     body = response.json()
     assert body["created"] is True
     assert body["duplicate"] is False
+    assert body["caller_message"] == (
+        "Your report has been received and sent to the dispatch console. "
+        "I cannot confirm a responder or arrival distance yet. Please stay safe; help is being coordinated."
+    )
 
     incident = test_context.get(f"/api/incidents/{body['incident_id']}")
     assert incident.status_code == 200
@@ -59,6 +63,22 @@ def test_missing_information_remains_null(test_context, webhook_headers):
     assert incident["description"] is None
     assert incident["location"] is None
     assert incident["people_count"] is None
+
+
+def test_conversation_start_creates_empty_incident_idempotently(test_context, webhook_headers):
+    payload = {"conversation_id": "conversation-start"}
+    first = test_context.post(
+        "/api/elevenlabs/tools/start-incident", headers=webhook_headers, json=payload
+    )
+    second = test_context.post(
+        "/api/elevenlabs/tools/start-incident", headers=webhook_headers, json=payload
+    )
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["created"] is True
+    assert second.json()["duplicate"] is True
+    assert first.json()["incident_id"] == second.json()["incident_id"]
+    assert first.json()["dispatch_confirmed"] is False
 
 
 def test_invalid_payload_rejected(test_context, webhook_headers):

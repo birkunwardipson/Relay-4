@@ -5,8 +5,8 @@ import type { Call } from "../intake";
 import { setMode } from "../mode";
 import { href } from "../router";
 import type { Pick } from "../pages/Incidents";
-import { rankUnits, STATUS_TEXT } from "../response";
-import { serviceOf, SERVICE_ICON, SERVICES, UNIT_SERVICE_LABEL, type Service } from "../services";
+import { rankUnits, STATUS_TEXT, travelText } from "../response";
+import { serviceOf, servicesFor, SERVICE_ICON, SERVICES, UNIT_SERVICE_LABEL, type Service } from "../services";
 import { StatusBadge } from "./Badges";
 import { KeyNeeded, Notice, ResponderCard } from "./Cards";
 import { Icon } from "./Icon";
@@ -67,6 +67,13 @@ export function AssignPanel({ call, pick, onPick }: { call: Call; pick: Pick; on
   const onThisIncident = new Set(response.assignments.map((item) => item.unitId));
   const chosen = ranked.find((item) => item.unit.id === pick.unitId && item.state.kind === "available" && !onThisIncident.has(item.unit.id));
   const pending = result?.kind === "pending";
+  // Nearest available unit for each service the report calls for and nobody covers yet. The dispatcher still confirms.
+  const recommended = servicesFor(call.incident)
+    .filter(({ service }) => !response.assignments.some((item) => item.service === service))
+    .map(({ service, reason }) => {
+      const nearest = rankUnits(dispatch.units.filter((unit) => unit.service === service), dispatch.unitStates, call.point ?? null).ranked;
+      return { service, reason, best: nearest.find((item) => item.state.kind === "available" && !onThisIncident.has(item.unit.id)) ?? null };
+    });
 
   const confirm = async () => {
     if (!chosen || pending) return;
@@ -102,13 +109,44 @@ export function AssignPanel({ call, pick, onPick }: { call: Call; pick: Pick; on
           </button>
         ))}
       </div>
-      <p className="small muted">
+      {!resolved && recommended.length > 0 && (
+        <div className="assigned recommended">
+          <h3 className="eyebrow">Recommended response</h3>
+          <ul>
+            {recommended.map(({ service, reason, best }) => (
+              <li key={service}>
+                <Icon name={SERVICE_ICON[service]} size={18} className={`svc ${service}`} />
+                <span>
+                  <strong>{UNIT_SERVICE_LABEL[service]}</strong> <span className="muted small">· {reason}</span>
+                  <br />
+                  <span className="small">{best ? `${best.unit.name} · ${travelText(best)}` : `No available ${UNIT_SERVICE_LABEL[service].toLowerCase()} unit`}</span>
+                </span>
+                {best && (
+                  <button
+                    className="btn small"
+                    disabled={pending}
+                    onClick={() => {
+                      onPick({ service, unitId: best.unit.id });
+                      setResult(null);
+                    }}
+                    aria-pressed={pick.unitId === best.unit.id}
+                  >
+                    {pick.unitId === best.unit.id ? "Selected" : `Select ${best.unit.name}`}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {recommended.length === 0 && <p className="small muted">
         {suggested ? (
           <>Suggested: <b>{UNIT_SERVICE_LABEL[suggested]}</b> for a reported {humanize(call.incident.incident_type, "incident").toLowerCase()}. Add other services as needed.</>
         ) : (
           "No service suggested from the report yet; choose what the situation needs."
         )}
-      </p>
+      </p>}
 
       {response.assignments.length > 0 && (
         <div className="assigned">

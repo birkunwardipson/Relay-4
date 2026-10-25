@@ -58,7 +58,7 @@ export function CallHistory() {
                   <th scope="col">Reported</th>
                   <th scope="col">Incident</th>
                   <th scope="col">Location</th>
-                  <th scope="col">Intake status</th>
+                  <th scope="col">Conversation</th>
                   <th scope="col">Response</th>
                   <th scope="col">Time to scene</th>
                   <th scope="col">Recording</th>
@@ -79,7 +79,10 @@ export function CallHistory() {
                       <SeverityBadge call={call} />
                     </td>
                     <td>{call.incident.location ?? <span className="muted">Unknown</span>}</td>
-                    <td>{call.live ? "Call in progress" : STATUS_LABEL[call.incident.status]}</td>
+                    <td>
+                      {call.live ? "Call in progress" : call.incident.conversation_id ? "Ended" : STATUS_LABEL[call.incident.status]}
+                      {!call.live && call.incident.conversation_id && <span className="muted small block">Intake: {STATUS_LABEL[call.incident.status]}</span>}
+                    </td>
                     <td>{response ? <StatusBadge status={response.status} /> : <span className="muted">Not connected</span>}</td>
                     <td>{toScene !== null ? duration(toScene) : <span className="muted">—</span>}</td>
                     <td>

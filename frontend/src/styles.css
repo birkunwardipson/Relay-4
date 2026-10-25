@@ -446,3 +446,4 @@ select { padding: 8px 10px; border: 1px solid var(--border-strong); border-radiu
   .map-responders, .map-detail { height: 300px; }
 }
 .settings input[type="password"] { flex: 1; min-width: 200px; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card); }
+.recommended li > span { flex: 1; min-width: 0; }

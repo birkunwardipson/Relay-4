@@ -34,7 +34,11 @@ export function IncidentDetailPanel({ call, detail, pick }: Props) {
         <div className="detail-title">
           <h2 id="incident-title">
             {humanize(incident.incident_type, "Unclassified incident")} <SeverityBadge call={call} />
-            {live && <Pill tone="danger">● Call in progress</Pill>}
+            {live ? (
+              <Pill tone="danger">● Call in progress</Pill>
+            ) : incident.conversation_id ? (
+              <Pill tone="neutral">● Call ended</Pill>
+            ) : null}
           </h2>
           <p className="addr">
             <Icon name="pin" size={18} />
@@ -60,7 +64,15 @@ export function IncidentDetailPanel({ call, detail, pick }: Props) {
 
       <section>
         <h3>Summary</h3>
-        <p>{incident.description ?? <span className="muted">No summary from the agent yet.</span>}</p>
+        {incident.description ? (
+          <p>{incident.description}</p>
+        ) : factSummary(incident) ? (
+          <p>
+            {factSummary(incident)} <span className="muted small">(built from what the caller has said so far; the agent has not sent a summary yet)</span>
+          </p>
+        ) : (
+          <p className="muted">Nothing reported yet.</p>
+        )}
       </section>
 
       <div className="facts-grid">
@@ -146,4 +158,16 @@ function Fact({ icon, label, value }: { icon: IconName; label: string; value: st
       </span>
     </div>
   );
+}
+
+/** Plain-text summary of the facts so far, for a call still in progress before the agent's own description. */
+function factSummary(incident: Call["incident"]): string | null {
+  const parts = [
+    (incident.incident_type || incident.location) &&
+      `${humanize(incident.incident_type, "Incident")}${incident.location ? ` at ${incident.location}` : ""}${incident.landmark ? ` (${incident.landmark})` : ""}.`,
+    incident.people_count != null && `${incident.people_count} ${incident.people_count === 1 ? "person" : "people"} involved.`,
+    incident.hazard && `Hazard: ${humanize(incident.hazard).toLowerCase()}.`,
+    incident.injuries && `Injuries: ${incident.injuries}.`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : null;
 }

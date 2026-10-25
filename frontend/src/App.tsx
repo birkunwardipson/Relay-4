@@ -127,10 +127,11 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
           <Icon name="search" />
         </button>
         <div className="user">
-          <span className="avatar" aria-hidden="true">{mode === "demo" ? "JD" : "—"}</span>
+          <span className="avatar" aria-hidden="true">{mode === "demo" ? "JD" : "P"}</span>
           <span>
-            <strong>{mode === "demo" ? "Jordan Diaz" : "Dispatcher"}</strong>
-            <span className="muted small">{mode === "demo" ? "Dispatcher (demo)" : "No sign-in configured"}</span>
+            <strong>{mode === "demo" ? "Jordan Diaz" : "Pete"}</strong>
+            {/* shortcut: name is fixed in code, not a sign-in; replace when the backend has dispatcher identity */}
+            <span className="muted small">{mode === "demo" ? "Dispatcher (demo)" : "Operator · no sign-in"}</span>
           </span>
         </div>
       </div>

@@ -58,7 +58,9 @@ Interactive API documentation is available at <http://127.0.0.1:8000/docs>.
 ## API behavior
 
 - `GET /health` is a basic service check.
+- `POST /api/elevenlabs/tools/start-incident` opens an empty intake record at conversation start. Send `conversation_id` from ElevenLabs' `{{system__conversation_id}}` dynamic variable.
 - `POST /api/elevenlabs/tools/upsert-incident` is protected by the configured webhook secret. It requires a unique `event_id` and `conversation_id`.
+- The webhook response includes `dispatch_confirmed: false` and a `caller_message`, which is safe for ElevenLabs to read aloud. It confirms receipt and coordination only; it does not claim that a responder was assigned.
 - The first authenticated event for a conversation creates a server-side conversation binding and an incident. Later events for that conversation update the same incident.
 - Repeating an `event_id` returns the existing incident with `duplicate: true` and makes no additional changes.
 - LLM-provided source quotes are stored in `incident_evidence` as `unverified`. This MVP does not mark evidence verified automatically.
@@ -89,6 +91,15 @@ Create a server-side webhook tool in the ElevenLabs agent configuration with:
   - Optional evidence: `source_quote`, `transcript_reference`
 
 Use an event ID that is unique for each tool invocation. The exact ElevenLabs UI field names and webhook configuration can change, so verify the current agent tool schema before connecting a deployed agent. The backend intentionally does not require an ElevenLabs API key for inbound webhook authentication.
+
+Create a second server-side webhook tool for the start of every conversation:
+
+- URL: `https://YOUR-BACKEND-HOST/api/elevenlabs/tools/start-incident`
+- HTTP method: `POST`
+- Header: `X-ElevenLabs-Webhook-Secret: <same value as ELEVENLABS_WEBHOOK_SECRET>`
+- JSON body: `{ "conversation_id": "{{system__conversation_id}}" }`
+
+In the ElevenLabs agent instructions, call `start-incident` silently before asking the first question. For each new fact, call `upsert-incident` with `conversation_id` set to `{{system__conversation_id}}` and a unique `event_id`. Tell the agent to read the returned `caller_message` after the details have been recorded. Never say “dispatch status unconfirmed”; `dispatch_confirmed: false` means only that the report is recorded and no responder assignment has been confirmed. Do not invent a responder name, distance, ETA, or dispatch confirmation.
 
 Example request:
 

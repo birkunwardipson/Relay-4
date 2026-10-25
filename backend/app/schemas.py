@@ -39,6 +39,17 @@ class WebhookToolPayload(IncidentFields):
         return value.strip()
 
 
+class StartConversationPayload(BaseModel):
+    conversation_id: str = Field(min_length=1, max_length=255)
+
+    @field_validator("conversation_id")
+    @classmethod
+    def non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value.strip()
+
+
 class HistoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,6 +105,10 @@ class WebhookResponse(BaseModel):
     status: IncidentStatus
     created: bool
     duplicate: bool
+    dispatch_confirmed: bool
+    # This is safe for the voice agent to read aloud. It must not imply that a
+    # responder was assigned: the webhook only records the report.
+    caller_message: str
 
 
 LatLng = tuple[float, float]
