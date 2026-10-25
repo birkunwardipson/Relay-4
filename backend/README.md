@@ -6,6 +6,8 @@ FastAPI backend for Relay4's synthetic emergency voice intake workflow. MVP 1 re
 
 For local setup, tunnel configuration, ElevenLabs fields, smoke tests, and troubleshooting, use [`../RUNNING.md`](../RUNNING.md). This document focuses on the backend contract and implementation.
 
+For a pitch-ready explanation of the backend architecture, data model, security boundaries, API surface, demo narrative, and roadmap, see [`PITCH.md`](PITCH.md).
+
 ## Responsibilities
 
 - Receive and normalize emergency intake data.
@@ -50,6 +52,8 @@ cp .env.example .env
 ```
 
 Set different random values for `ELEVENLABS_WEBHOOK_SECRET` and `ADMIN_API_KEY` in `.env`. Never commit `.env` or real credentials.
+
+The console login operator defaults to `Pete`. Set `OPERATOR_PASSWORD` for a dedicated login password; if it is blank, the local login accepts the configured `ADMIN_API_KEY` as the operator password. The operator login is checked by `POST /api/auth/login`; dispatcher writes remain protected by `X-Admin-API-Key`.
 
 Start the service from the `backend/` directory:
 

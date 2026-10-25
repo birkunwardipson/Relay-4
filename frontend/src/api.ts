@@ -6,6 +6,22 @@ import type { Incident, IncidentDetail, LatLng } from "./types";
 // Endpoints in backend/app/api. Call recordings have no backend endpoint yet; see BACKEND_CONTRACT.md.
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
+export async function loginOperator(username: string, password: string): Promise<{ operator: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!response.ok) {
+    const detail = await response
+      .json()
+      .then((data: { detail?: unknown }) => (typeof data.detail === "string" ? data.detail : null))
+      .catch(() => null);
+    throw new ApiError(detail ?? "Operator login failed.", response.status);
+  }
+  return response.json() as Promise<{ operator: string }>;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,

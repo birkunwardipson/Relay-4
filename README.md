@@ -4,6 +4,13 @@ Relay4 is a Louisiana-focused emergency voice-intake and incident-coordination M
 
 > **Safety and scope:** Relay4 is a synthetic hackathon system. It does not contact 911, emergency services, or real responders. The voice agent records intake facts; a human dispatcher controls assignments. Treat every displayed location, priority, distance, and status as unverified until a qualified operator confirms it.
 
+## Team
+
+- [sandeshbasnet804-bit](https://github.com/sandeshbasnet804-bit)
+- [birkunwardipson](https://github.com/birkunwardipson)
+- [prakashhh2](https://github.com/prakashhh2)
+- [Grishdontlist](https://github.com/Grishdontlist)
+
 ![Relay4 operations overview](docs/images/overview.png)
 
 ## What Relay4 does
@@ -42,6 +49,7 @@ The incident workspace combines the queue, caller facts, evidence and history, m
 | Area | Purpose |
 | --- | --- |
 | [`backend/`](backend/README.md) | FastAPI API, SQLite persistence, ElevenLabs tools, dispatch records, auth, and tests |
+| [`backend/PITCH.md`](backend/PITCH.md) | Detailed backend pitch, data model, API contract, security boundary, demo narrative, and roadmap |
 | [`frontend/`](frontend/README.md) | React/Vite dispatcher console and demo data source |
 | [`RUNNING.md`](RUNNING.md) | Complete local setup, tunnel, ElevenLabs configuration, smoke tests, and troubleshooting |
 | [`docs/architecture.md`](docs/architecture.md) | Domain model and product flow |

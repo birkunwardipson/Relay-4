@@ -50,6 +50,16 @@ class StartConversationPayload(BaseModel):
         return value.strip()
 
 
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=500)
+
+
+class LoginResponse(BaseModel):
+    authenticated: bool = True
+    operator: str
+
+
 class HistoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

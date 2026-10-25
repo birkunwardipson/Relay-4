@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     elevenlabs_webhook_secret: str = Field(default="", repr=False)
     elevenlabs_webhook_header: str = "X-ElevenLabs-Webhook-Secret"
     admin_api_key: str = Field(default="", repr=False)
+    operator_username: str = "Pete"
+    operator_password: str = Field(default="", repr=False)
     simulation_mode: bool = True
     cors_origins: str = ""
 
@@ -36,6 +38,11 @@ class Settings(BaseSettings):
                 )
             )
         return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+    @property
+    def configured_operator_password(self) -> str:
+        """Use a separate operator password when configured; otherwise use the local admin key."""
+        return self.operator_password or self.admin_api_key
 
 
 @lru_cache

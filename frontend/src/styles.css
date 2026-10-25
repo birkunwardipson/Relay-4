@@ -91,6 +91,17 @@ main { padding: 22px 28px 40px; min-width: 0; outline: none; }
 .avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--gray-soft); font-weight: 600; color: var(--navy); }
 .banner { margin-bottom: 16px; }
 
+/* Login */
+.login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.login-card { width: min(100%, 440px); padding: 32px; }
+.login-logo { color: var(--navy); font-size: 22px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 28px; }
+.login-logo span { color: var(--teal); }
+.login-card h1 { margin: 4px 0 8px; font-size: 30px; letter-spacing: -0.02em; }
+.login-card form { display: grid; gap: 16px; margin-top: 24px; }
+.login-card label { display: grid; gap: 6px; font-weight: 600; }
+.login-card input { width: 100%; padding: 11px 12px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--card); font-weight: 400; }
+.login-error { padding: 10px 12px; border-radius: 8px; background: var(--red-soft); color: var(--red); font-size: 14px; }
+
 /* Buttons and controls */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card); font-weight: 600; text-decoration: none; color: var(--text); }
 .btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }

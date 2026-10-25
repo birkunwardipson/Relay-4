@@ -28,6 +28,15 @@ ELEVENLABS_WEBHOOK_SECRET=replace-with-a-long-random-value
 ADMIN_API_KEY=replace-with-a-different-long-random-value
 ```
 
+Operator login configuration:
+
+```dotenv
+OPERATOR_USERNAME=Pete
+OPERATOR_PASSWORD=replace-with-a-dedicated-operator-password
+```
+
+If `OPERATOR_PASSWORD` is blank, the login accepts `ADMIN_API_KEY` locally. The frontend keeps the login only for the current browser session; dispatcher writes still use `ADMIN_API_KEY` from Settings.
+
 Do not commit `.env`. The local database is SQLite at `backend/relay4.db` and is ignored by Git.
 
 ## 2. Start the backend
@@ -66,6 +75,8 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
 Open <http://127.0.0.1:5173>.
+
+Sign in as `Pete` using `OPERATOR_PASSWORD` (or `ADMIN_API_KEY` when no dedicated operator password is configured). After login, the header shows `Pete · Operator`.
 
 The default frontend configuration is:
 
